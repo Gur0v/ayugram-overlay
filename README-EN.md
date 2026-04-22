@@ -17,7 +17,7 @@ If you're on aarch64 — replace with ~arm64.
 
 ```bash
 emerge --ask app-eselect/eselect-repository
-eselect repository add ayugram git https://github.com/OverLessArtem/ayugram-ebuild-gentoo.git
+eselect repository add ayugram git https://codeberg.org/OverLessArtem/ayugram-ebuild-gentoo.git
 emaint sync --repo ayugram
 echo "net-im/ayugram-desktop ~amd64" | tee /etc/portage/package.accept_keywords/ayugram-desktop
 # For aarch64: echo "net-im/ayugram-desktop ~arm64" | tee ...
@@ -26,7 +26,7 @@ emerge --ask --verbose net-im/ayugram-desktop
 ### Installation (Dev branch / live-9999)
 ```bash
 emerge --ask app-eselect/eselect-repository
-eselect repository add ayugram git https://github.com/OverLessArtem/ayugram-ebuild-gentoo.git
+eselect repository add ayugram git https://codeberg.org/OverLessArtem/ayugram-ebuild-gentoo.git
 emaint sync --repo ayugram
 echo "net-im/ayugram-desktop **" | tee /etc/portage/package.accept_keywords/ayugram-desktop
 emerge --ask --verbose =net-im/ayugram-desktop-9999
