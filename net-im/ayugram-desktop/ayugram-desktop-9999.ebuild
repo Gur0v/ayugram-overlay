@@ -16,6 +16,7 @@ EGIT_BRANCH="dev"
 LICENSE="BSD GPL-3-with-openssl-exception LGPL-2+"
 SLOT="0"
 KEYWORDS=""
+
 IUSE="dbus enchant +fonts +libdispatch screencast wayland webkit +X"
 
 CDEPEND="
