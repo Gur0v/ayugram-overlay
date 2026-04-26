@@ -12,15 +12,14 @@
 ## Установка
 
 ### Установка (Последняя стабильная версия)
-Пакет помечен ~amd64. Для x86_64 добавьте ~amd64 в keywords.  
-Если у вас aarch64 — замените на ~arm64.
+Ebuild не имеет предустановленных KEYWORDS для максимальной гибкости. Чтобы установить пакет, необходимо явно разрешить его в package.accept_keywords для вашей архитектуры.
 
 ```bash
 emerge --ask app-eselect/eselect-repository
 eselect repository add ayugram git https://codeberg.org/OverLessArtem/ayugram-ebuild-gentoo.git
 emaint sync --repo ayugram
+# Замените ~amd64 на вашу архитектуру (например ~arm64 для aarch64)
 echo "net-im/ayugram-desktop ~amd64" | tee /etc/portage/package.accept_keywords/ayugram-desktop
-# Для aarch64: echo "net-im/ayugram-desktop ~arm64" | sudo tee ...
 emerge --ask --verbose net-im/ayugram-desktop
 ```
 

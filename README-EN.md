@@ -12,15 +12,14 @@ Up-to-date dev branch
 ## Installation
 
 ### Installation (Latest stable version)
-The package is keyworded ~amd64. For x86_64, add ~amd64 to keywords.  
-If you're on aarch64 — replace with ~arm64.
+Ebuild has no preset KEYWORDS for maximum flexibility. To install the package, you need to explicitly allow it in package.accept_keywords for your architecture.
 
 ```bash
 emerge --ask app-eselect/eselect-repository
 eselect repository add ayugram git https://codeberg.org/OverLessArtem/ayugram-ebuild-gentoo.git
 emaint sync --repo ayugram
+# Replace ~amd64 with your architecture (e.g. ~arm64 for aarch64)
 echo "net-im/ayugram-desktop ~amd64" | tee /etc/portage/package.accept_keywords/ayugram-desktop
-# For aarch64: echo "net-im/ayugram-desktop ~arm64" | tee ...
 emerge --ask --verbose net-im/ayugram-desktop
 ```
 ### Installation (Dev branch / live-9999)
