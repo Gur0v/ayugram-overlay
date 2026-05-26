@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: gentoo/stage3:latest
+      image: gentoo/stage3:amd64-desktop-openrc
       options: --privileged
 
     steps:
@@ -61,7 +61,6 @@ jobs:
           EOF
 
           cat > /etc/portage/package.use/ayugram <<EOF
-          dev-qt/qtbase -opengl icu
           media-video/ffmpeg opus vpx
           EOF
 
