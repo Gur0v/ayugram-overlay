@@ -46,7 +46,7 @@ jobs:
           BINPKG_FORMAT="gpkg"
           PKGDIR="${PWD}/var/cache/binpkgs"
 
-          FEATURES="buildpkg -ipc-sandbox -network-sandbox -pid-sandbox"
+          FEATURES="buildpkg getbinpkg -binpkg-request-signature -ipc-sandbox -network-sandbox -pid-sandbox"
           EMERGE_DEFAULT_OPTS="--jobs=2 --with-bdeps=y"
           EOF
 
