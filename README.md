@@ -23,11 +23,11 @@ The included `tg_owt` version contains PipeWire/SPA compatibility fixes required
 ### 1. Add overlay
 
 ```bash
-emerge --ask app-eselect/eselect-repository
+sudo emerge --ask app-eselect/eselect-repository
 
-eselect repository add ayugram https://github.com/Gur0v/ayugram-gentoo.git
+sudo eselect repository add ayugram https://github.com/Gur0v/ayugram-gentoo.git
 
-emaint sync --repo ayugram
+sudo emaint sync --repo ayugram
 ```
 
 ### 2. Install dependency
@@ -35,7 +35,7 @@ emaint sync --repo ayugram
 Install the patched WebRTC stack provided by this overlay:
 
 ```bash
-emerge --ask --verbose --oneshot media-libs/tg_owt
+sudo emerge --ask --verbose --oneshot media-libs/tg_owt::ayugram
 ```
 
 This version is required for correct PipeWire/SPA compatibility on modern systems.
@@ -45,17 +45,17 @@ This version is required for correct PipeWire/SPA compatibility on modern system
 #### Stable release (example)
 
 ```bash
-echo "=net-im/ayugram-desktop-6.7.8 **" >> /etc/portage/package.accept_keywords/ayugram-desktop
+sudo echo "=net-im/ayugram-desktop-6.7.8 **" >> /etc/portage/package.accept_keywords/ayugram-desktop
 
-emerge --ask --verbose =net-im/ayugram-desktop-6.7.8
+sudo emerge --ask --verbose =net-im/ayugram-desktop-6.7.8
 ```
 
 #### Live version (9999)
 
 ```bash
-echo "net-im/ayugram-desktop **" >> /etc/portage/package.accept_keywords/ayugram-desktop
+sudo echo "net-im/ayugram-desktop **" >> /etc/portage/package.accept_keywords/ayugram-desktop
 
-emerge --ask --verbose =net-im/ayugram-desktop-9999
+sudo emerge --ask --verbose =net-im/ayugram-desktop-9999
 ```
 
 ## Notes
