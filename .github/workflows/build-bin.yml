@@ -49,7 +49,6 @@ jobs:
           BINPKG_FORMAT="gpkg"
           PKGDIR="${PWD}/var/cache/binpkgs"
           FEATURES="binpkg-request-signature buildpkg getbinpkg -ipc-sandbox -network-sandbox -pid-sandbox"
-          EMERGE_DEFAULT_OPTS="--getbinpkg=y --binpkg-request-signature=y"
           EOF
           mkdir -p /etc/portage/{package.accept_keywords,package.env,package.use,env}
           echo 'COMMON_FLAGS="${COMMON_FLAGS} -fno-lto"' > /etc/portage/env/nolto.conf
