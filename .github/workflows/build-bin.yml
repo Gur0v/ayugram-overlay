@@ -1,0 +1,79 @@
+name: build-binpkg
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'ebuild version (e.g. 6.7.8)'
+        required: true
+        default: '6.7.8'
+      tag:
+        description: 'release tag (e.g. v6.7.8-bin)'
+        required: true
+        default: 'v6.7.8-bin'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: gentoo/stage3:latest
+      options: --privileged # required for portage sandbox
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: init portage
+        run: |
+          emerge-webrsync -q
+          mkdir -p /etc/portage/repos.conf
+          
+          cat <<EOF > /etc/portage/repos.conf/ayugram.conf
+          [ayugram]
+          location = ${{ github.workspace }}
+          masters = gentoo
+          auto-sync = no
+          EOF
+
+      - name: configure make.conf & env
+        run: |
+          # target x86_64-v2, kill docker sandboxes, cap jobs for GH runners (7GB RAM)
+          cat << 'EOF' >> /etc/portage/make.conf
+          COMMON_FLAGS="-march=x86-64-v2 -O2 -pipe"
+          CFLAGS="${COMMON_FLAGS}"
+          CXXFLAGS="${COMMON_FLAGS}"
+          MAKEOPTS="-j2"
+          FEATURES="buildpkg -ipc-sandbox -network-sandbox -pid-sandbox"
+          PKGDIR="/var/cache/binpkgs"
+          EOF
+
+          mkdir -p /etc/portage/{package.accept_keywords,package.env,env}
+
+          # nuke LTO so tg_owt/ayugram don't OOM kill the runner during linking
+          echo 'COMMON_FLAGS="${COMMON_FLAGS} -fno-lto"' > /etc/portage/env/nolto.conf
+
+          cat << 'EOF' > /etc/portage/package.env/ayugram
+          media-libs/tg_owt nolto.conf
+          net-im/ayugram-desktop nolto.conf
+          EOF
+
+          cat << EOF > /etc/portage/package.accept_keywords/ayugram
+          =media-libs/tg_owt-0_pre20250515* **
+          =net-im/ayugram-desktop-${{ inputs.version }} **
+          EOF
+
+      - name: compile
+        run: |
+          emerge -1v media-libs/tg_owt::ayugram
+          emerge -1v =net-im/ayugram-desktop-${{ inputs.version }}::ayugram
+
+      - name: extract pkg
+        run: |
+          mkdir -p dist
+          find /var/cache/binpkgs/net-im/ayugram-desktop -name "*.gpkg.tar" -exec cp -v {} dist/ \;
+
+      - name: push release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag }}
+          files: dist/*.gpkg.tar
+          fail_on_unmatched_files: true
