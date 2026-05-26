@@ -48,7 +48,7 @@ jobs:
           MAKEOPTS="-j2"
           BINPKG_FORMAT="gpkg"
           PKGDIR="${PWD}/var/cache/binpkgs"
-          FEATURES="binpkg-request-signature buildpkg getbinpkg -ipc-sandbox -network-sandbox -pid-sandbox"
+          FEATURES="binpkg-request-signature buildpkg candy getbinpkg -ipc-sandbox -network-sandbox -pid-sandbox"
           EOF
           mkdir -p /etc/portage/{package.accept_keywords,package.env,package.use,env}
           echo 'COMMON_FLAGS="${COMMON_FLAGS} -fno-lto"' > /etc/portage/env/nolto.conf
