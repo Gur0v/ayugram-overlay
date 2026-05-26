@@ -57,6 +57,10 @@ jobs:
           media-libs/tg_owt nolto.conf
           net-im/ayugram-desktop nolto.conf
           EOF
+          cat << EOF > /etc/portage/package.use/ayugram
+          >=dev-qt/qtbase-6.10.3-r1 opengl icu
+          >=media-video/ffmpeg-8.1 opus vpx
+          EOF
           cat << EOF > /etc/portage/package.accept_keywords/ayugram
           =media-libs/tg_owt-0_pre20250515* **
           =net-im/ayugram-desktop-${{ inputs.version }} **
