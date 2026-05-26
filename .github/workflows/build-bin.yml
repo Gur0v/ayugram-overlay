@@ -65,6 +65,7 @@ jobs:
           =net-im/ayugram-desktop-${{ inputs.version }} **
           dev-cpp/cppgir **
           EOF
+          getuto
 
       - name: tg_owt
         run: |
