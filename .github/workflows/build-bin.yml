@@ -49,17 +49,13 @@ jobs:
           BINPKG_FORMAT="gpkg"
           PKGDIR="${PWD}/var/cache/binpkgs"
           FEATURES="buildpkg getbinpkg -binpkg-request-signature -ipc-sandbox -network-sandbox -pid-sandbox"
-          EMERGE_DEFAULT_OPTS="--jobs=2 --with-bdeps=y"
+          EMERGE_DEFAULT_OPTS="--jobs=2 --autounmask-write --with-bdeps=y"
           EOF
           mkdir -p /etc/portage/{package.accept_keywords,package.env,package.use,env}
           echo 'COMMON_FLAGS="${COMMON_FLAGS} -fno-lto"' > /etc/portage/env/nolto.conf
           cat << 'EOF' > /etc/portage/package.env/ayugram
           media-libs/tg_owt nolto.conf
           net-im/ayugram-desktop nolto.conf
-          EOF
-          cat << 'EOF' > /etc/portage/package.use/ayugram
-          dev-qt/qtbase opengl
-          media-video/ffmpeg vpx opus
           EOF
           cat << EOF > /etc/portage/package.accept_keywords/ayugram
           =media-libs/tg_owt-0_pre20250515* **
