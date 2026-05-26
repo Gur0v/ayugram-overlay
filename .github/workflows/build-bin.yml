@@ -61,8 +61,8 @@ jobs:
           EOF
 
           cat > /etc/portage/package.use/ayugram <<EOF
-          >=dev-qt/qtbase-6.10.3-r1 opengl icu
-          >=media-video/ffmpeg-8.1 opus vpx
+          dev-qt/qtbase opengl icu
+          media-video/ffmpeg opus vpx
           EOF
 
           cat > /etc/portage/package.accept_keywords/ayugram <<EOF
