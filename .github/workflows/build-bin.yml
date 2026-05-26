@@ -61,7 +61,7 @@ jobs:
           EOF
 
           cat > /etc/portage/package.use/ayugram <<EOF
-          dev-qt/qtbase opengl icu
+          dev-qt/qtbase -opengl icu
           media-video/ffmpeg opus vpx
           EOF
 
