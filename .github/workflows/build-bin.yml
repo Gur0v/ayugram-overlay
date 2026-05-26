@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'ebuild version (e.g. 6.7.8)'
+        description: 'version'
         required: true
         default: '6.7.8'
       tag:
-        description: 'release tag (e.g. v6.7.8-bin)'
+        description: 'tag'
         required: true
         default: 'v6.7.8-bin'
 
@@ -22,58 +22,52 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: cache tg_owt binpkg
-        id: cache-webrtc
+      - id: cache-webrtc
         uses: actions/cache@v4
         with:
-          path: binpkgs-cache
-          key: tg_owt-0_pre20250515-x86_64-v2-v1
+          path: var/cache/binpkgs
+          key: tg_owt-0_pre20250515-x86_64-v2-r1
 
-      - name: init portage
+      - name: init
         run: |
-          mkdir -p /var/db/repos/gentoo
+          mkdir -p /var/db/repos/gentoo /etc/portage/repos.conf
           emerge-webrsync -q
-          mkdir -p /etc/portage/repos.conf
-          
-          cat <<EOF > /etc/portage/repos.conf/ayugram.conf
+          cat << EOF > /etc/portage/repos.conf/ayugram.conf
           [ayugram]
           location = ${PWD}
           masters = gentoo
           auto-sync = no
           EOF
 
-      - name: configure make.conf & env
+      - name: config
         run: |
           cat << 'EOF' >> /etc/portage/make.conf
           COMMON_FLAGS="-march=x86-64-v2 -O2 -pipe"
           CFLAGS="${COMMON_FLAGS}"
           CXXFLAGS="${COMMON_FLAGS}"
           MAKEOPTS="-j2"
+          BINPKG_FORMAT="gpkg"
+          PKGDIR="${PWD}/var/cache/binpkgs"
           FEATURES="binpkg-request-signature buildpkg getbinpkg -ipc-sandbox -network-sandbox -pid-sandbox"
-          PKGDIR="${PWD}/binpkgs-cache"
+          EMERGE_DEFAULT_OPTS="--getbinpkg=y --binpkg-request-signature=y"
           EOF
-
           mkdir -p /etc/portage/{package.accept_keywords,package.env,package.use,env}
-
           echo 'COMMON_FLAGS="${COMMON_FLAGS} -fno-lto"' > /etc/portage/env/nolto.conf
-
           cat << 'EOF' > /etc/portage/package.env/ayugram
           media-libs/tg_owt nolto.conf
           net-im/ayugram-desktop nolto.conf
           EOF
-
           cat << 'EOF' > /etc/portage/package.use/ayugram
           dev-qt/qtbase opengl
           media-video/ffmpeg vpx opus
           EOF
-
           cat << EOF > /etc/portage/package.accept_keywords/ayugram
           =media-libs/tg_owt-0_pre20250515* **
           =net-im/ayugram-desktop-${{ inputs.version }} **
           dev-cpp/cppgir **
           EOF
 
-      - name: compile tg_owt
+      - name: tg_owt
         run: |
           if [ "${{ steps.cache-webrtc.outputs.cache-hit }}" = "true" ]; then
             emerge -1v --usepkgonly media-libs/tg_owt::ayugram
@@ -81,15 +75,16 @@ jobs:
             emerge -1v media-libs/tg_owt::ayugram
           fi
 
-      - name: compile ayugram-desktop
+      - name: ayugram
         run: emerge -1v =net-im/ayugram-desktop-${{ inputs.version }}::ayugram
 
-      - name: extract pkg
+      - name: collect
         run: |
           mkdir -p dist
-          find binpkgs-cache/net-im/ayugram-desktop -name "*.gpkg.tar" -exec cp -v {} dist/ \;
+          find var/cache/binpkgs/net-im/ayugram-desktop -name "*.gpkg.tar" -exec cp -v {} dist/ \;
+          chown -R 1001:1001 var/cache/binpkgs dist
 
-      - name: push release
+      - name: release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.tag }}
