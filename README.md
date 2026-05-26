@@ -3,32 +3,24 @@
 ![AyuGram](https://github.com/AyuGram/AyuGramDesktop/raw/dev/.github/AyuGram.png)
 ![AyuChan](https://github.com/AyuGram/AyuGramDesktop/raw/dev/.github/AyuChan.png) <img src="https://www.gentoo.org/assets/img/logo/gentoo-signet.png" alt="Gentoo" width="128"/>
 
-**Unofficial AyuGram Desktop overlay for Gentoo Linux**
+**Unofficial Gentoo overlay for AyuGram Desktop**
 
-→ Upstream: [https://github.com/AyuGram/AyuGramDesktop](https://github.com/AyuGram/AyuGramDesktop)
+Upstream: [https://github.com/AyuGram/AyuGramDesktop](https://github.com/AyuGram/AyuGramDesktop)
 
-## Repository Structure
+## About this overlay
 
-This overlay provides the following packages:
+This overlay provides AyuGram Desktop and a patched WebRTC stack (`media-libs/tg_owt`).
 
-* **net-im/ayugram-desktop**: Core AyuGram desktop client
-* **media-libs/tg_owt**: Custom-patched fork of WebRTC used by Telegram/AyuGram for calling and media
+The included `tg_owt` version contains PipeWire/SPA compatibility fixes required on modern systems where upstream WebRTC builds may fail due to API changes.
 
-### Why a custom `tg_owt`?
+## Package list
 
-The official WebRTC/tg_owt sources frequently fail to compile against newer PipeWire versions due to breaking SPA header changes.
-
-This overlay includes:
-
-`tg_owt-0_pre20250515-pipewire-spa-compat.patch`
-
-to maintain compatibility with modern system libraries while upstream fixes are still in progress.
+* net-im/ayugram-desktop
+* media-libs/tg_owt
 
 ## Installation
 
-### 1. Enable the repository
-
-First ensure `eselect-repository` is installed, then add and sync the overlay:
+### 1. Add overlay
 
 ```bash
 emerge --ask app-eselect/eselect-repository
@@ -38,69 +30,49 @@ eselect repository add ayugram https://github.com/Gur0v/ayugram-gentoo.git
 emaint sync --repo ayugram
 ```
 
-### 2. Unmask and install
+### 2. Install dependency
 
-Because these ebuilds do not define stable keywords, you must explicitly accept them in Portage.
+Install the patched WebRTC stack provided by this overlay:
 
-> ⚠️ **Important dependency step**
->
-> To avoid dependency conflicts with the main Gentoo tree, you must install (`--oneshot`) the custom `media-libs/tg_owt` from this overlay before installing AyuGram 6.7+ or the live version.
+```bash
+emerge --ask --verbose --oneshot media-libs/tg_owt
+```
 
-### Option A: Install a specific release (e.g. 6.7.8)
+This version is required for correct PipeWire/SPA compatibility on modern systems.
 
-Add package keywords:
+### 3. Install AyuGram
+
+#### Stable release (example)
 
 ```bash
 echo "=net-im/ayugram-desktop-6.7.8 **" >> /etc/portage/package.accept_keywords/ayugram-desktop
-echo "media-libs/tg_owt ~amd64" >> /etc/portage/package.accept_keywords/ayugram-desktop
-```
 
-Install dependency first:
-
-```bash
-emerge --ask --verbose --oneshot media-libs/tg_owt
-```
-
-Install AyuGram:
-
-```bash
 emerge --ask --verbose =net-im/ayugram-desktop-6.7.8
 ```
 
-*(Adjust `~amd64` for your architecture if needed.)*
-
-### Option B: Install live branch (9999)
-
-Enable live build:
+#### Live version (9999)
 
 ```bash
 echo "net-im/ayugram-desktop **" >> /etc/portage/package.accept_keywords/ayugram-desktop
-echo "media-libs/tg_owt ~amd64" >> /etc/portage/package.accept_keywords/ayugram-desktop
-```
 
-Install dependency first:
-
-```bash
-emerge --ask --verbose --oneshot media-libs/tg_owt
-```
-
-Install AyuGram:
-
-```bash
 emerge --ask --verbose =net-im/ayugram-desktop-9999
 ```
 
-### Note on version 6.3.10
+## Notes
 
-The `6.3.10` ebuild is kept only for legacy and debugging purposes. It is not intended for daily use.
+### tg_owt
 
-## Important compilation notes
+Upstream WebRTC/tg_owt frequently breaks with newer PipeWire releases due to SPA header changes.
+This overlay ships a patched build to maintain compatibility.
 
-### Compiler support
+Use the overlay-provided `media-libs/tg_owt`. Mixing with system or upstream variants may result in build or runtime issues.
 
-Historically, builds have failed at link time when using Clang or ThinLTO.
+### Compiler
 
-This fork includes fixes for GCC 16 and Clang 20 via `tg_owt` patches, but:
+GCC is the most tested configuration.
 
-* GCC remains the recommended and most tested compiler
-* If Clang produces linking errors, switch to GCC
+Clang and ThinLTO builds may fail in some configurations. If issues occur, switch to GCC.
+
+## Legacy versions
+
+* 6.3.10 is included for debugging and historical purposes only.
