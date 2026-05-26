@@ -16,7 +16,7 @@ Ebuild не имеет предустановленных KEYWORDS для мак
 
 ```bash
 emerge --ask app-eselect/eselect-repository
-eselect repository add ayugram git https://codeberg.org/OverLessArtem/ayugram-ebuild-gentoo.git
+eselect repository add ayugram git https://github.com/Gur0v/ayugram-gentoo.git
 emaint sync --repo ayugram
 # Замените ~amd64 на вашу архитектуру (например ~arm64 для aarch64)
 echo "net-im/ayugram-desktop ~amd64" | tee /etc/portage/package.accept_keywords/ayugram-desktop
@@ -26,7 +26,7 @@ emerge --ask --verbose net-im/ayugram-desktop
 ### Установка (Dev-бранч / live-9999)
 ```bash
 emerge --ask app-eselect/eselect-repository
-eselect repository add ayugram git https://codeberg.org/OverLessArtem/ayugram-ebuild-gentoo.git
+eselect repository add ayugram git https://github.com/Gur0v/ayugram-gentoo.git
 emaint sync --repo ayugram
 echo "net-im/ayugram-desktop **" | tee /etc/portage/package.accept_keywords/ayugram-desktop
 emerge --ask --verbose =net-im/ayugram-desktop-9999
