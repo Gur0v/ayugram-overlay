@@ -24,12 +24,13 @@ jobs:
 
       - name: init portage
         run: |
+          mkdir -p /var/db/repos/gentoo
           emerge-webrsync -q
           mkdir -p /etc/portage/repos.conf
           
           cat <<EOF > /etc/portage/repos.conf/ayugram.conf
           [ayugram]
-          location = ${{ github.workspace }}
+          location = ${PWD}
           masters = gentoo
           auto-sync = no
           EOF
