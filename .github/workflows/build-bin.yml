@@ -22,6 +22,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: cache tg_owt binpkg
+        id: cache-webrtc
+        uses: actions/cache@v4
+        with:
+          path: binpkgs-cache
+          key: tg_owt-0_pre20250515-x86_64-v2-v1
+
       - name: init portage
         run: |
           mkdir -p /var/db/repos/gentoo
@@ -43,7 +50,7 @@ jobs:
           CXXFLAGS="${COMMON_FLAGS}"
           MAKEOPTS="-j2"
           FEATURES="binpkg-request-signature buildpkg getbinpkg -ipc-sandbox -network-sandbox -pid-sandbox"
-          PKGDIR="/var/cache/binpkgs"
+          PKGDIR="${PWD}/binpkgs-cache"
           EOF
 
           mkdir -p /etc/portage/{package.accept_keywords,package.env,package.use,env}
@@ -66,15 +73,21 @@ jobs:
           dev-cpp/cppgir **
           EOF
 
-      - name: compile
+      - name: compile tg_owt
         run: |
-          emerge -1v media-libs/tg_owt::ayugram
-          emerge -1v =net-im/ayugram-desktop-${{ inputs.version }}::ayugram
+          if [ "${{ steps.cache-webrtc.outputs.cache-hit }}" = "true" ]; then
+            emerge -1v --usepkgonly media-libs/tg_owt::ayugram
+          else
+            emerge -1v media-libs/tg_owt::ayugram
+          fi
+
+      - name: compile ayugram-desktop
+        run: emerge -1v =net-im/ayugram-desktop-${{ inputs.version }}::ayugram
 
       - name: extract pkg
         run: |
           mkdir -p dist
-          find /var/cache/binpkgs/net-im/ayugram-desktop -name "*.gpkg.tar" -exec cp -v {} dist/ \;
+          find binpkgs-cache/net-im/ayugram-desktop -name "*.gpkg.tar" -exec cp -v {} dist/ \;
 
       - name: push release
         uses: softprops/action-gh-release@v2
