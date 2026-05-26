@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: gentoo/stage3:latest
-      options: --privileged # required for portage sandbox
+      options: --privileged
 
     steps:
       - uses: actions/checkout@v4
@@ -37,19 +37,17 @@ jobs:
 
       - name: configure make.conf & env
         run: |
-          # target x86_64-v2, kill docker sandboxes, cap jobs for GH runners (7GB RAM)
           cat << 'EOF' >> /etc/portage/make.conf
           COMMON_FLAGS="-march=x86-64-v2 -O2 -pipe"
           CFLAGS="${COMMON_FLAGS}"
           CXXFLAGS="${COMMON_FLAGS}"
           MAKEOPTS="-j2"
-          FEATURES="buildpkg -ipc-sandbox -network-sandbox -pid-sandbox"
+          FEATURES="binpkg-request-signature buildpkg getbinpkg -ipc-sandbox -network-sandbox -pid-sandbox"
           PKGDIR="/var/cache/binpkgs"
           EOF
 
-          mkdir -p /etc/portage/{package.accept_keywords,package.env,env}
+          mkdir -p /etc/portage/{package.accept_keywords,package.env,package.use,env}
 
-          # nuke LTO so tg_owt/ayugram don't OOM kill the runner during linking
           echo 'COMMON_FLAGS="${COMMON_FLAGS} -fno-lto"' > /etc/portage/env/nolto.conf
 
           cat << 'EOF' > /etc/portage/package.env/ayugram
@@ -57,9 +55,15 @@ jobs:
           net-im/ayugram-desktop nolto.conf
           EOF
 
+          cat << 'EOF' > /etc/portage/package.use/ayugram
+          dev-qt/qtbase opengl
+          media-video/ffmpeg vpx opus
+          EOF
+
           cat << EOF > /etc/portage/package.accept_keywords/ayugram
           =media-libs/tg_owt-0_pre20250515* **
           =net-im/ayugram-desktop-${{ inputs.version }} **
+          dev-cpp/cppgir **
           EOF
 
       - name: compile
