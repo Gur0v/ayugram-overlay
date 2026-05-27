@@ -160,8 +160,23 @@ jobs:
       - name: collect
         run: |
           mkdir -p dist
-          find "${PKGDIR}" -type f -name "*.gpkg.tar" -exec cp -v {} dist/ \;
-          test -n "$(find dist -maxdepth 1 -name '*.gpkg.tar' -print -quit)"
+          
+          AYUGRAM_PKG=$(find "${PKGDIR}" -type f -name "ayugram-desktop-${{ inputs.version }}*.gpkg.tar" | sort -V | tail -n 1)
+          
+          if [[ -z "$AYUGRAM_PKG" ]]; then
+            echo "Error: ayugram-desktop binary package not found!"
+            exit 1
+          fi
+          
+          OUT_FILE="ayugram-desktop-${{ inputs.version }}.gpkg.tar"
+          
+          cp -v "$AYUGRAM_PKG" "dist/${OUT_FILE}"
+          
+          cd dist
+          sha256sum "${OUT_FILE}" > "${OUT_FILE}.sha256"
+          
+          test -f "${OUT_FILE}"
+          test -f "${OUT_FILE}.sha256"
 
       - name: purge-release
         env:
@@ -210,7 +225,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ayugram-desktop-${{ inputs.version }}-binpkg
-          path: dist/*.gpkg.tar
+          path: |
+            dist/*.gpkg.tar
+            dist/*.sha256
           retention-days: 30
           if-no-files-found: error
 
@@ -218,5 +235,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.tag }}
-          files: dist/*.gpkg.tar
+          files: |
+            dist/*.gpkg.tar
+            dist/*.sha256
           fail_on_unmatched_files: true
