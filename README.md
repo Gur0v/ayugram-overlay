@@ -33,6 +33,9 @@ sudo emerge -av =net-im/ayugram-desktop-6.7.8
 
 ### Live (9999)
 
+> [!NOTE]
+> This method installs the live, unmasked version directly from the development branch. Intended for developers and testers.
+
 ```bash
 echo "net-im/ayugram-desktop **" | sudo tee -a /etc/portage/package.accept_keywords/ayugram
 sudo emerge -av net-im/ayugram-desktop::ayugram
