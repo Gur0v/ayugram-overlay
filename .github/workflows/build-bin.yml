@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "package version (e.g. 6.7.8)"
+        description: "AyuGram version (e.g. 6.7.8)"
         required: true
         default: "6.7.8"
       tag:
-        description: "release tag (e.g. v6.7.8)"
+        description: "Release tag (e.g. v6.7.8)"
         required: true
         default: "v6.7.8"
 
@@ -33,60 +33,53 @@ jobs:
       CCACHE_DIR: /var/cache/ccache
 
     steps:
-      - name: checkout
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: cache-key
+      - name: Generate cache key
         id: cache-key
         run: printf 'week=%s\n' "$(date +%G-%V)" >> "$GITHUB_OUTPUT"
 
-      # Portage tree: refresh at most once per week.
-      - name: cache-portage
+      - name: Cache Portage tree
         uses: actions/cache@v4
         with:
           path: /var/db/repos/gentoo
           key: portage-${{ runner.os }}-${{ steps.cache-key.outputs.week }}
           restore-keys: portage-${{ runner.os }}-
 
-      # Binary packages: keyed on overlay ebuild content. A cache hit means
-      # tg_owt and its deps are already built; emerge skips recompilation.
-      - name: cache-binpkgs
+      - name: Cache binary packages
         uses: actions/cache@v4
         with:
           path: ${{ env.PKGDIR }}
           key: binpkgs-${{ runner.os }}-${{ hashFiles('media-libs/**', 'net-im/**', 'dev-cpp/**') }}
           restore-keys: binpkgs-${{ runner.os }}-
 
-      # Compiler cache: speeds up partial rebuilds (e.g. ayugram bumps,
-      # same tg_owt). Keyed loosely so old entries are always reusable.
-      - name: cache-ccache
+      - name: Cache ccache
         uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ runner.os }}-${{ github.sha }}
           restore-keys: ccache-${{ runner.os }}-
 
-      - name: sync
+      - name: Sync Portage
         run: |
           mkdir -p /var/db/repos/gentoo
           emerge-webrsync -q
           getuto
 
-      - name: overlay
+      - name: Register overlay
         run: |
           mkdir -p /etc/portage/repos.conf
-          cat > /etc/portage/repos.conf/ayugram.conf <<EOF
+          cat > /etc/portage/repos.conf/ayugram.conf << EOF
           [ayugram]
           location = ${GITHUB_WORKSPACE}
           masters = gentoo
           auto-sync = no
           EOF
 
-      - name: configure
+      - name: Configure Portage
         run: |
-          # Unquoted heredoc: $(nproc) evaluates now; \${VAR} stays
-          # literal for Portage to resolve when sourcing make.conf.
-          cat >> /etc/portage/make.conf <<EOF
+          cat >> /etc/portage/make.conf << EOF
           COMMON_FLAGS="-march=x86-64-v2 -O2 -pipe"
           CFLAGS="\${COMMON_FLAGS}"
           CXXFLAGS="\${COMMON_FLAGS}"
@@ -104,38 +97,37 @@ jobs:
             /etc/portage/package.env \
             /etc/portage/package.use
 
-          # tg_owt and ayugram-desktop fail to link with LTO enabled.
-          echo 'COMMON_FLAGS="${COMMON_FLAGS} -fno-lto"' \
-            > /etc/portage/env/nolto.conf
+          cat > /etc/portage/env/nolto.conf << EOF
+          COMMON_FLAGS="\${COMMON_FLAGS} -fno-lto"
+          EOF
 
-          cat > /etc/portage/package.env/ayugram <<EOF
+          cat > /etc/portage/package.env/ayugram << EOF
           media-libs/tg_owt nolto.conf
           net-im/ayugram-desktop nolto.conf
           EOF
 
-          cat > /etc/portage/package.use/ayugram <<EOF
+          cat > /etc/portage/package.use/ayugram << EOF
           media-video/ffmpeg opus vpx
           EOF
 
-          cat > /etc/portage/package.accept_keywords/ayugram <<EOF
-          =media-libs/tg_owt-0_pre20250515* **
+          cat > /etc/portage/package.accept_keywords/ayugram << EOF
+          >=media-libs/tg_owt-0_pre20260309 **
           =net-im/ayugram-desktop-${{ inputs.version }} **
           dev-cpp/cppgir **
           EOF
 
-      - name: tg_owt
-        run: emerge -1v media-libs/tg_owt::ayugram
+      - name: Build tg_owt
+        run: emerge -1v ">=media-libs/tg_owt-0_pre20260309"
 
-      - name: ayugram-desktop
+      - name: Build ayugram-desktop
         run: emerge -1v =net-im/ayugram-desktop-${{ inputs.version }}::ayugram
 
-      - name: collect
+      - name: Collect binary package
         run: |
           mkdir -p dist
-          find "${PKGDIR}/net-im/ayugram-desktop" -name "*.gpkg.tar" \
-            -exec cp -v {} dist/ \;
+          find "${PKGDIR}/net-im" -name "*.gpkg.tar" -exec cp -v {} dist/ \;
 
-      - name: artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ayugram-desktop-${{ inputs.version }}-binpkg
@@ -143,7 +135,7 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: release
+      - name: Create release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.tag }}
