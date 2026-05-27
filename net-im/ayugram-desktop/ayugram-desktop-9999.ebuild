@@ -7,7 +7,7 @@ PYTHON_COMPAT=( python3_{11..14} )
 
 inherit xdg cmake python-any-r1 flag-o-matic optfeature git-r3
 
-DESCRIPTION="Desktop Telegram client with good customization and Ghost mode."
+DESCRIPTION="Desktop Telegram client with good customization and Ghost mode"
 HOMEPAGE="https://github.com/AyuGram/AyuGramDesktop"
 
 EGIT_REPO_URI="https://github.com/AyuGram/AyuGramDesktop.git"
@@ -17,7 +17,7 @@ LICENSE="BSD GPL-3-with-openssl-exception LGPL-2+"
 SLOT="0"
 KEYWORDS=""
 
-IUSE="dbus enchant +fonts +libdispatch screencast wayland webkit +X"
+IUSE="dbus enchant +fonts screencast wayland webkit +X"
 
 CDEPEND="
 	!net-im/telegram-desktop-bin
@@ -31,6 +31,7 @@ CDEPEND="
 	>=dev-libs/protobuf-21.12
 	dev-libs/qr-code-generator:=
 	dev-libs/xxhash
+	dev-libs/libdispatch
 	>=dev-qt/qtbase-6.5:6=[dbus?,gui,network,opengl,ssl,wayland?,widgets,X?]
 	>=dev-qt/qtimageformats-6.5:6
 	>=dev-qt/qtsvg-6.5:6
@@ -45,7 +46,6 @@ CDEPEND="
 	kde-frameworks/kcoreaddons:6
 	!enchant? ( >=app-text/hunspell-1.7:= )
 	enchant? ( app-text/enchant:= )
-	libdispatch? ( dev-libs/libdispatch )
 	webkit? ( wayland? (
 		>=dev-qt/qtdeclarative-6.5:6
 		>=dev-qt/qtwayland-6.5:6[compositor(+),qml]
@@ -68,9 +68,9 @@ DEPEND="${CDEPEND}
 BDEPEND="
 	${PYTHON_DEPS}
 	>=dev-build/cmake-3.16
-	>=dev-cpp/cppgir-2.0_p20240315
+	>=dev-cpp/cppgir-2.0_p20260226
 	>=dev-libs/gobject-introspection-1.82.0-r2
-	dev-util/gdbus-codegen
+	>=dev-util/gdbus-codegen-2.80.5-r1
 	virtual/pkgconfig
 	wayland? ( dev-util/wayland-scanner )
 "
@@ -139,7 +139,8 @@ src_configure() {
 
 	filter-flags -fno-delete-null-pointer-checks
 	append-cppflags -DNDEBUG
-	use !libdispatch && append-cppflags -DCRL_FORCE_QT
+
+	append-cxxflags -Wno-free-nonheap-object
 
 	local no_webkit_wayland=$(use webkit && use wayland && echo no || echo yes)
 	local use_webkit_wayland=$(use webkit && use wayland && echo yes || echo no)
@@ -157,7 +158,6 @@ src_configure() {
 		-DDESKTOP_APP_DISABLE_X11_INTEGRATION=$(usex !X)
 		-DDESKTOP_APP_USE_ENCHANT=$(usex enchant)
 		-DDESKTOP_APP_USE_PACKAGED_FONTS=$(usex !fonts)
-		-DDESKTOP_APP_USE_LIBDISPATCH=$(usex libdispatch)
 	)
 
 	if [[ -n ${MY_TDESKTOP_API_ID} && -n ${MY_TDESKTOP_API_HASH} ]]; then
@@ -177,6 +177,7 @@ src_configure() {
 }
 
 src_compile() {
+	cmake_build $("${CMAKE_BINARY}" --build "${BUILD_DIR}" -t help | sed -n '/^[^/]*_cppgir:/s/:.*//p')
 	cmake_build
 	cmake_build
 }
@@ -185,11 +186,6 @@ pkg_postinst() {
 	xdg_pkg_postinst
 	if ! use X && ! use screencast; then
 		ewarn "both the 'X' and 'screencast' USE flags are disabled, screen sharing won't work!"
-		ewarn
-	fi
-	if ! use libdispatch; then
-		ewarn "Disabling USE=libdispatch may cause performance degradation"
-		ewarn "due to fallback to poor QThreadPool!"
 		ewarn
 	fi
 	optfeature_header

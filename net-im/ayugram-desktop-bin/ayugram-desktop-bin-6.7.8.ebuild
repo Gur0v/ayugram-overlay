@@ -5,10 +5,10 @@ EAPI=8
 
 inherit xdg
 
-DESCRIPTION="Desktop Telegram client with good customization and Ghost mode (binary)"
+DESCRIPTION="Desktop Telegram client with good customization and Ghost mode (binary package)"
 HOMEPAGE="https://github.com/AyuGram/AyuGramDesktop"
 
-SRC_URI="https://github.com/Gur0v/ayugram-overlay/releases/download/v${PV}/ayugram-desktop-${PV}-1.gpkg.tar"
+SRC_URI="https://github.com/Gur0v/ayugram-overlay/releases/download/v${PV}/ayugram-desktop-${PV}.gpkg.tar"
 S="${WORKDIR}"
 
 LICENSE="BSD GPL-3-with-openssl-exception LGPL-2+"
@@ -52,9 +52,7 @@ RDEPEND="
 "
 
 src_unpack() {
-	# gpkg outer tar -> image.tar.zst -> image/ subtree
-	tar -xOf "${DISTDIR}/${A}" \
-		"ayugram-desktop-${PV}-1/image.tar.zst" \
+	tar -xOf "${DISTDIR}/${A}" --wildcards '*/image.tar.zst' \
 		| tar --zstd -x -C "${WORKDIR}" \
 		|| die "Failed to unpack binary image from gpkg"
 }
@@ -70,9 +68,6 @@ src_install() {
 		cp -pPR "image/${d}" "${ED}/" || die
 	done
 
-	# The upstream image names the doc dir after the source package, not
-	# this one. Rename to match ${P} and decompress pre-bzipped docs so
-	# portage handles compression uniformly.
 	local upstream_doc="${ED}/usr/share/doc/ayugram-desktop-${PV}"
 	if [[ -d "${upstream_doc}" ]]; then
 		mv "${upstream_doc}" "${ED}/usr/share/doc/${P}" || die

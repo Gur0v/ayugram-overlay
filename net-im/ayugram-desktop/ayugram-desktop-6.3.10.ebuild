@@ -7,7 +7,7 @@ PYTHON_COMPAT=( python3_{11..14} )
 
 inherit xdg cmake python-any-r1 flag-o-matic optfeature git-r3
 
-DESCRIPTION="Desktop Telegram client with good customization and Ghost mode."
+DESCRIPTION="Desktop Telegram client with good customization and Ghost mode"
 HOMEPAGE="https://github.com/AyuGram/AyuGramDesktop"
 
 # TODO: https://github.com/AyuGram/AyuGramDesktop/archive/refs/tags/v${PV}.tar.gz -> ${P}.tar.gz
