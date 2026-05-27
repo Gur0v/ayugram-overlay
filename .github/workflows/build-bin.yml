@@ -19,99 +19,103 @@ concurrency:
 permissions:
   contents: write
 
+env:
+  PKGDIR: /var/cache/binpkgs
+  CCACHE_DIR: /var/cache/ccache
+  PORTAGE_TMPDIR: /var/tmp/portage
+
 jobs:
   build:
     name: net-im/ayugram-desktop-${{ inputs.version }}
     runs-on: ubuntu-latest
     timeout-minutes: 180
+
     container:
       image: gentoo/stage3:amd64-desktop-openrc
       options: --privileged
 
-    env:
-      PKGDIR: /var/cache/binpkgs
-      CCACHE_DIR: /var/cache/ccache
-
     steps:
-      - name: Checkout
+      - name: Checkout overlay
         uses: actions/checkout@v4
 
-      - name: Generate cache key
-        id: cache-key
-        run: printf 'week=%s\n' "$(date +%G-%V)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache Portage tree
-        uses: actions/cache@v4
-        with:
-          path: /var/db/repos/gentoo
-          key: portage-${{ runner.os }}-${{ steps.cache-key.outputs.week }}
-          restore-keys: portage-${{ runner.os }}-
+      - name: Prepare directories
+        run: mkdir -p "${PKGDIR}" "${CCACHE_DIR}" "${PORTAGE_TMPDIR}" /var/db/repos/gentoo
 
       - name: Cache binary packages
         uses: actions/cache@v4
         with:
           path: ${{ env.PKGDIR }}
-          key: binpkgs-${{ runner.os }}-${{ hashFiles('media-libs/**', 'net-im/**', 'dev-cpp/**') }}
-          restore-keys: binpkgs-${{ runner.os }}-
+          key: binpkgs-${{ runner.os }}-${{ hashFiles('media-libs/**', 'net-im/**', 'dev-cpp/**', '.github/workflows/**') }}
+          restore-keys: |
+            binpkgs-${{ runner.os }}-
 
       - name: Cache ccache
         uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ runner.os }}-${{ github.sha }}
-          restore-keys: ccache-${{ runner.os }}-
+          key: ccache-${{ runner.os }}
+          restore-keys: |
+            ccache-${{ runner.os }}-
 
-      - name: Sync Portage
+      - name: Sync repository metadata
         run: |
-          mkdir -p /var/db/repos/gentoo
           emerge-webrsync -q
           getuto
+
+      - name: Install build tools
+        run: emerge -1qv dev-util/ccache dev-util/github-cli
 
       - name: Register overlay
         run: |
           mkdir -p /etc/portage/repos.conf
-          cat > /etc/portage/repos.conf/ayugram.conf << EOF
+          cat >/etc/portage/repos.conf/ayugram.conf <<EOF
           [ayugram]
           location = ${GITHUB_WORKSPACE}
           masters = gentoo
           auto-sync = no
+          priority = 9999
           EOF
 
       - name: Configure Portage
         run: |
-          cat >> /etc/portage/make.conf << EOF
+          cat >> /etc/portage/make.conf <<EOF
           COMMON_FLAGS="-march=x86-64-v2 -O2 -pipe"
           CFLAGS="\${COMMON_FLAGS}"
           CXXFLAGS="\${COMMON_FLAGS}"
           MAKEOPTS="-j$(nproc)"
+          PORTAGE_TMPDIR="${PORTAGE_TMPDIR}"
           BINPKG_FORMAT="gpkg"
           PKGDIR="${PKGDIR}"
-          CCACHE_DIR="${CCACHE_DIR}"
-          FEATURES="buildpkg getbinpkg ccache -binpkg-request-signature -ipc-sandbox -network-sandbox -pid-sandbox"
-          EMERGE_DEFAULT_OPTS="--jobs=$(nproc) --with-bdeps=y"
+          FEATURES="buildpkg buildpkg-live getbinpkg ccache -binpkg-request-signature -ipc-sandbox -network-sandbox -pid-sandbox"
+          EMERGE_DEFAULT_OPTS="--jobs=$(nproc) --with-bdeps=y --complete-graph=y"
           EOF
 
-          mkdir -p \
-            /etc/portage/env \
-            /etc/portage/package.accept_keywords \
-            /etc/portage/package.env \
-            /etc/portage/package.use
+          mkdir -p /etc/portage/env /etc/portage/package.env /etc/portage/package.use /etc/portage/package.accept_keywords
 
-          cat > /etc/portage/env/nolto.conf << EOF
+          chown -R root:portage "${CCACHE_DIR}"
+          chmod 2775 "${CCACHE_DIR}"
+
+          cat > "${CCACHE_DIR}/ccache.conf" <<EOF
+          max_size = 50G
+          compression = true
+          sloppiness = pch_defines,time_macros
+          EOF
+
+          cat > /etc/portage/env/nolto.conf <<EOF
           COMMON_FLAGS="\${COMMON_FLAGS} -fno-lto"
           EOF
 
-          cat > /etc/portage/package.env/ayugram << EOF
+          cat > /etc/portage/package.env/ayugram <<EOF
           media-libs/tg_owt nolto.conf
           net-im/ayugram-desktop nolto.conf
           EOF
 
-          cat > /etc/portage/package.use/ayugram << EOF
+          cat > /etc/portage/package.use/ayugram <<EOF
           media-video/ffmpeg opus vpx
           sys-libs/minizip-ng compat
           EOF
 
-          cat > /etc/portage/package.accept_keywords/ayugram << EOF
+          cat > /etc/portage/package.accept_keywords/ayugram <<EOF
           >=media-libs/tg_owt-0_pre20260309 **
           =net-im/ayugram-desktop-${{ inputs.version }} **
           dev-cpp/cppgir **
@@ -121,20 +125,29 @@ jobs:
         run: emerge -1v ">=media-libs/tg_owt-0_pre20260309"
 
       - name: Build ayugram-desktop
-        run: emerge -1v =net-im/ayugram-desktop-${{ inputs.version }}::ayugram
+        run: emerge -1v "=net-im/ayugram-desktop-${{ inputs.version }}::ayugram"
 
-      - name: Collect binary package
+      - name: Print ccache stats
+        run: ccache -s
+
+      - name: Collect packages
         run: |
           mkdir -p dist
-          find "${PKGDIR}/net-im" -name "*.gpkg.tar" -exec cp -v {} dist/ \;
+          find "${PKGDIR}/net-im" -type f -name "*.gpkg.tar" -exec cp -v {} dist/ \;
+          test -n "$(find dist -name '*.gpkg.tar' -print -quit)"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ayugram-desktop-${{ inputs.version }}-binpkg
           path: dist/*.gpkg.tar
-          if-no-files-found: error
           retention-days: 30
+          if-no-files-found: error
+
+      - name: Delete existing release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release delete "${{ inputs.tag }}" --cleanup-tag --yes || true
 
       - name: Create release
         uses: softprops/action-gh-release@v2
