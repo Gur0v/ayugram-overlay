@@ -5,17 +5,18 @@ EAPI=8
 
 PYTHON_COMPAT=( python3_{11..14} )
 
-inherit xdg cmake python-any-r1 flag-o-matic optfeature git-r3
+inherit xdg cmake python-any-r1 flag-o-matic optfeature
 
 DESCRIPTION="Desktop Telegram client with good customization and Ghost mode"
 HOMEPAGE="https://github.com/AyuGram/AyuGramDesktop"
 
-EGIT_REPO_URI="https://github.com/AyuGram/AyuGramDesktop.git"
-EGIT_COMMIT="v${PV}"
+SRC_URI="https://github.com/AyuGram/AyuGramDesktop/releases/download/v${PV}/AyuGramDesktop-${PV}-full.tar.gz -> ${P}-full.tar.gz"
+
+S="${WORKDIR}/AyuGramDesktop-${PV}-full"
 
 LICENSE="BSD GPL-3-with-openssl-exception LGPL-2+"
 SLOT="0"
-KEYWORDS=""
+KEYWORDS="~amd64"
 
 IUSE="dbus enchant +fonts screencast wayland webkit +X"
 
@@ -79,10 +80,6 @@ PATCHES=(
 	"${FILESDIR}"/tdesktop-6.5.1-zlib-1.3.2.patch
 )
 
-src_unpack() {
-	git-r3_src_unpack
-}
-
 pkg_pretend() {
 	if [[ ${MERGE_TYPE} != binary ]]; then
 		if has ccache ${FEATURES}; then
@@ -140,7 +137,6 @@ src_configure() {
 	filter-flags -fno-delete-null-pointer-checks
 	append-cppflags -DNDEBUG
 
-	# GCC 15 false positive in bundled rlottie's COW pointer (vcowptr.h).
 	append-cxxflags -Wno-free-nonheap-object
 
 	local no_webkit_wayland=$(use webkit && use wayland && echo no || echo yes)
@@ -178,9 +174,6 @@ src_configure() {
 }
 
 src_compile() {
-	# Pre-build all cppgir targets upfront to avoid a redundant re-link
-	# during src_install() if gen/gio/_types.hpp is regenerated mid-build.
-	# See telegram-desktop for rationale (slow with LTO).
 	cmake_build $("${CMAKE_BINARY}" --build "${BUILD_DIR}" -t help | sed -n '/^[^/]*_cppgir:/s/:.*//p')
 	cmake_build
 	cmake_build
