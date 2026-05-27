@@ -20,24 +20,24 @@ sudo emaint sync --repo ayugram
 Fastest option, no compilation required. Requires x86_64-v2 CPU (Intel/AMD 2008+).
 
 ```bash
-echo "=net-im/ayugram-desktop-bin-6.7.8 **" | sudo tee -a /etc/portage/package.accept_keywords/ayugram
-sudo emerge -av =net-im/ayugram-desktop-bin-6.7.8
+echo "net-im/ayugram-desktop-bin ~amd64" | sudo tee -a /etc/portage/package.accept_keywords/00ayugram
+sudo emerge -av net-im/ayugram-desktop-bin
 ```
 
-### Source (6.7.8)
+### Source
 
 ```bash
-echo "=net-im/ayugram-desktop-6.7.8 **" | sudo tee -a /etc/portage/package.accept_keywords/ayugram
-sudo emerge -av =net-im/ayugram-desktop-6.7.8
+echo "net-im/ayugram-desktop ~amd64" | sudo tee -a /etc/portage/package.accept_keywords/00ayugram
+sudo emerge -av net-im/ayugram-desktop
 ```
 
-### Live (9999)
+### Live
 
 > [!NOTE]
 > This method installs the live, unmasked version directly from the development branch. Intended for developers and testers.
 
 ```bash
-echo "net-im/ayugram-desktop **" | sudo tee -a /etc/portage/package.accept_keywords/ayugram
+echo "net-im/ayugram-desktop **" | sudo tee -a /etc/portage/package.accept_keywords/00ayugram
 sudo emerge -av net-im/ayugram-desktop::ayugram
 ```
 
