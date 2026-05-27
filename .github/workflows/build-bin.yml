@@ -108,6 +108,7 @@ jobs:
 
           cat > /etc/portage/package.use/ayugram << EOF
           media-video/ffmpeg opus vpx
+          sys-libs/minizip-ng compat
           EOF
 
           cat > /etc/portage/package.accept_keywords/ayugram << EOF
