@@ -31,6 +31,7 @@ CDEPEND="
 	>=dev-libs/protobuf-21.12
 	dev-libs/qr-code-generator:=
 	dev-libs/xxhash
+	dev-libs/libdispatch
 	>=dev-qt/qtbase-6.5:6=[dbus?,gui,network,opengl,ssl,wayland?,widgets,X?]
 	>=dev-qt/qtimageformats-6.5:6
 	>=dev-qt/qtsvg-6.5:6
