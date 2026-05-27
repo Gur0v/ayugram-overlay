@@ -63,7 +63,7 @@ jobs:
           getuto
 
       - name: Install build tools
-        run: emerge -1qv dev-util/ccache dev-util/github-cli
+        run: emerge -1qv dev-util/ccache
 
       - name: Register overlay
         run: |
@@ -121,9 +121,6 @@ jobs:
           dev-cpp/cppgir **
           EOF
 
-      - name: Build tg_owt
-        run: emerge -1v ">=media-libs/tg_owt-0_pre20260309"
-
       - name: Build ayugram-desktop
         run: emerge -1v "=net-im/ayugram-desktop-${{ inputs.version }}::ayugram"
 
@@ -133,7 +130,7 @@ jobs:
       - name: Collect packages
         run: |
           mkdir -p dist
-          find "${PKGDIR}/net-im" -type f -name "*.gpkg.tar" -exec cp -v {} dist/ \;
+          find "${PKGDIR}" -type f -name "*.gpkg.tar" -exec cp -v {} dist/ \;
           test -n "$(find dist -name '*.gpkg.tar' -print -quit)"
 
       - name: Upload artifact
@@ -147,7 +144,9 @@ jobs:
       - name: Delete existing release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release delete "${{ inputs.tag }}" --cleanup-tag --yes || true
+        run: |
+          wget -qO- https://github.com/cli/cli/releases/download/v2.47.0/gh_2.47.0_linux_amd64.tar.gz | tar -xz
+          ./gh_2.47.0_linux_amd64/bin/gh release delete "${{ inputs.tag }}" --cleanup-tag --yes || true
 
       - name: Create release
         uses: softprops/action-gh-release@v2
