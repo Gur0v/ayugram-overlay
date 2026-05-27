@@ -1,78 +1,69 @@
-# ayugram-gentoo
+# ayugram-overlay
 
 ![AyuGram](https://github.com/AyuGram/AyuGramDesktop/raw/dev/.github/AyuGram.png)
-![AyuChan](https://github.com/AyuGram/AyuGramDesktop/raw/dev/.github/AyuChan.png) <img src="https://www.gentoo.org/assets/img/logo/gentoo-signet.png" alt="Gentoo" width="128"/>
+![AyuChan](https://github.com/AyuGram/AyuGramDesktop/raw/dev/.github/AyuChan.png)
+<img src="https://wiki.gentoo.org/images/d/dd/Genchu.png" width="145"/>
 
-**Unofficial Gentoo overlay for AyuGram Desktop**
+Unofficial Portage overlay for [AyuGram Desktop](https://github.com/AyuGram/AyuGramDesktop)
 
-Upstream: [https://github.com/AyuGram/AyuGramDesktop](https://github.com/AyuGram/AyuGramDesktop)
-
-## About this overlay
-
-This overlay provides AyuGram Desktop and a patched WebRTC stack (`media-libs/tg_owt`).
-
-The included `tg_owt` version contains PipeWire/SPA compatibility fixes required on modern systems where upstream WebRTC builds may fail due to API changes.
-
-## Package list
-
-* net-im/ayugram-desktop
-* media-libs/tg_owt
-
-## Installation
-
-### 1. Add overlay
+## Setup
 
 ```bash
-sudo emerge --ask app-eselect/eselect-repository
-
 sudo eselect repository add ayugram https://github.com/Gur0v/ayugram-gentoo.git
-
 sudo emaint sync --repo ayugram
 ```
 
-### 2. Install dependency
+## Installation
 
-Install the patched WebRTC stack provided by this overlay:
+### Binary (recommended for most users)
 
-```bash
-sudo emerge --ask --verbose --oneshot media-libs/tg_owt::ayugram
-```
-
-This version is required for correct PipeWire/SPA compatibility on modern systems.
-
-### 3. Install AyuGram
-
-#### Stable release (example)
+Fastest option, no compilation required. Requires x86_64-v2 CPU (Intel/AMD 2008+).
 
 ```bash
-sudo echo "=net-im/ayugram-desktop-6.7.8 **" >> /etc/portage/package.accept_keywords/ayugram-desktop
-
-sudo emerge --ask --verbose =net-im/ayugram-desktop-6.7.8
+echo "=net-im/ayugram-desktop-bin-6.7.8 **" | sudo tee -a /etc/portage/package.accept_keywords/ayugram
+sudo emerge -av =net-im/ayugram-desktop-bin-6.7.8
 ```
 
-#### Live version (9999)
+### Source (6.7.8)
 
 ```bash
-sudo echo "net-im/ayugram-desktop **" >> /etc/portage/package.accept_keywords/ayugram-desktop
-
-sudo emerge --ask --verbose =net-im/ayugram-desktop-9999
+echo "=net-im/ayugram-desktop-6.7.8 **" | sudo tee -a /etc/portage/package.accept_keywords/ayugram
+sudo emerge -av =net-im/ayugram-desktop-6.7.8
 ```
+
+### Live (9999)
+
+```bash
+echo "net-im/ayugram-desktop **" | sudo tee -a /etc/portage/package.accept_keywords/ayugram
+sudo emerge -av net-im/ayugram-desktop::ayugram
+```
+
+## tg_owt
+
+Upstream WebRTC broke repeatedly against newer PipeWire due to SPA header changes. This overlay ships a patched version to work around this.
+
+As of `0_pre20260309`, upstream now includes these fixes. Try that first:
+
+```bash
+sudo emerge -av1 ">=media-libs/tg_owt-0_pre20260309"
+```
+
+If the build fails, fall back to the overlay version:
+
+```bash
+sudo emerge -av1 media-libs/tg_owt::ayugram
+```
+
+## Packages
+
+* `net-im/ayugram-desktop` - Source build (full USE flag support)
+* `net-im/ayugram-desktop-bin` - Pre-built x86_64-v2 binary (2008+ CPU required)
+* `media-libs/tg_owt` - WebRTC with PipeWire/SPA compatibility patches
 
 ## Notes
 
-### tg_owt
+* GCC recommended. Clang/ThinLTO builds may fail in some configurations.
 
-Upstream WebRTC/tg_owt frequently breaks with newer PipeWire releases due to SPA header changes.
-This overlay ships a patched build to maintain compatibility.
+## Credits
 
-Use the overlay-provided `media-libs/tg_owt`. Mixing with system or upstream variants may result in build or runtime issues.
-
-### Compiler
-
-GCC is the most tested configuration.
-
-Clang and ThinLTO builds may fail in some configurations. If issues occur, switch to GCC.
-
-## Legacy versions
-
-* 6.3.10 is included for debugging and historical purposes only.
+* [OverLessArtem](https://codeberg.org/OverLessArtem) - original ebuilds for 6.3.10
