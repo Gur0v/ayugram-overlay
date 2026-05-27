@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "AyuGram version (e.g. 6.7.8)"
+        description: "package version (e.g. 6.7.8)"
         required: true
         default: "6.7.8"
       tag:
-        description: "Release tag (e.g. v6.7.8)"
+        description: "release tag (e.g. v6.7.8)"
         required: true
         default: "v6.7.8"
 
@@ -19,56 +19,74 @@ concurrency:
 permissions:
   contents: write
 
-env:
-  PKGDIR: /var/cache/binpkgs
-  CCACHE_DIR: /var/cache/ccache
-  PORTAGE_TMPDIR: /var/tmp/portage
-
 jobs:
   build:
     name: net-im/ayugram-desktop-${{ inputs.version }}
     runs-on: ubuntu-latest
     timeout-minutes: 180
-
     container:
       image: gentoo/stage3:amd64-desktop-openrc
       options: --privileged
 
+    env:
+      PKGDIR: /var/cache/binpkgs
+      CCACHE_DIR: /var/cache/ccache
+
     steps:
-      - name: Checkout overlay
+      - name: checkout
         uses: actions/checkout@v4
 
-      - name: Prepare directories
-        run: mkdir -p "${PKGDIR}" "${CCACHE_DIR}" "${PORTAGE_TMPDIR}" /var/db/repos/gentoo
+      - name: mkdirs
+        run: |
+          mkdir -p \
+            "${PKGDIR}" \
+            "${CCACHE_DIR}" \
+            /var/db/repos/gentoo
 
-      - name: Cache binary packages
+      - name: cache-key
+        id: cache-key
+        run: printf 'week=%s\n' "$(date +%G-%V)" >> "$GITHUB_OUTPUT"
+
+      - name: cache-portage
+        uses: actions/cache@v4
+        with:
+          path: /var/db/repos/gentoo
+          key: portage-${{ runner.os }}-${{ steps.cache-key.outputs.week }}
+          restore-keys: portage-${{ runner.os }}-
+
+      - name: cache-binpkgs
         uses: actions/cache@v4
         with:
           path: ${{ env.PKGDIR }}
-          key: binpkgs-${{ runner.os }}-${{ hashFiles('media-libs/**', 'net-im/**', 'dev-cpp/**', '.github/workflows/**') }}
-          restore-keys: |
-            binpkgs-${{ runner.os }}-
+          key: binpkgs-${{ runner.os }}-${{ hashFiles('media-libs/**', 'net-im/**', 'dev-cpp/**') }}
+          restore-keys: binpkgs-${{ runner.os }}-
 
-      - name: Cache ccache
+      - name: cache-distfiles
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/distfiles/git3-src
+          key: distfiles-git-${{ runner.os }}-${{ hashFiles('net-im/**', 'media-libs/**') }}
+          restore-keys: distfiles-git-${{ runner.os }}-
+
+      - name: cache-ccache
         uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ runner.os }}
-          restore-keys: |
-            ccache-${{ runner.os }}-
+          key: ccache-${{ runner.os }}-${{ github.sha }}
+          restore-keys: ccache-${{ runner.os }}-
 
-      - name: Sync repository metadata
+      - name: sync
         run: |
           emerge-webrsync -q
           getuto
 
-      - name: Install build tools
+      - name: ccache-install
         run: emerge -1qv dev-util/ccache
 
-      - name: Register overlay
+      - name: overlay
         run: |
           mkdir -p /etc/portage/repos.conf
-          cat >/etc/portage/repos.conf/ayugram.conf <<EOF
+          cat > /etc/portage/repos.conf/ayugram.conf <<EOF
           [ayugram]
           location = ${GITHUB_WORKSPACE}
           masters = gentoo
@@ -76,31 +94,42 @@ jobs:
           priority = 9999
           EOF
 
-      - name: Configure Portage
+      - name: configure
         run: |
+          # Unquoted heredoc: $(nproc) evaluates now; \${VAR} stays
+          # literal for Portage to resolve when sourcing make.conf.
           cat >> /etc/portage/make.conf <<EOF
           COMMON_FLAGS="-march=x86-64-v2 -O2 -pipe"
           CFLAGS="\${COMMON_FLAGS}"
           CXXFLAGS="\${COMMON_FLAGS}"
           MAKEOPTS="-j$(nproc)"
-          PORTAGE_TMPDIR="${PORTAGE_TMPDIR}"
           BINPKG_FORMAT="gpkg"
           PKGDIR="${PKGDIR}"
+          CCACHE_DIR="${CCACHE_DIR}"
           FEATURES="buildpkg buildpkg-live getbinpkg ccache -binpkg-request-signature -ipc-sandbox -network-sandbox -pid-sandbox"
           EMERGE_DEFAULT_OPTS="--jobs=$(nproc) --with-bdeps=y --complete-graph=y"
           EOF
 
-          mkdir -p /etc/portage/env /etc/portage/package.env /etc/portage/package.use /etc/portage/package.accept_keywords
+          mkdir -p \
+            /etc/portage/env \
+            /etc/portage/package.accept_keywords \
+            /etc/portage/package.env \
+            /etc/portage/package.use
 
+          # Portage drops privileges to the portage user for builds;
+          # the ccache directory must be group-writable by portage.
           chown -R root:portage "${CCACHE_DIR}"
           chmod 2775 "${CCACHE_DIR}"
 
+          # pch_defines + time_macros allow ccache to cache precompiled
+          # headers, which ayugram-desktop uses extensively.
           cat > "${CCACHE_DIR}/ccache.conf" <<EOF
           max_size = 50G
           compression = true
           sloppiness = pch_defines,time_macros
           EOF
 
+          # tg_owt and ayugram-desktop fail to link with LTO enabled.
           cat > /etc/portage/env/nolto.conf <<EOF
           COMMON_FLAGS="\${COMMON_FLAGS} -fno-lto"
           EOF
@@ -121,19 +150,63 @@ jobs:
           dev-cpp/cppgir **
           EOF
 
-      - name: Build ayugram-desktop
+      - name: build
         run: emerge -1v "=net-im/ayugram-desktop-${{ inputs.version }}::ayugram"
 
-      - name: Print ccache stats
+      - name: ccache-stats
+        if: always()
         run: ccache -s
 
-      - name: Collect packages
+      - name: collect
         run: |
           mkdir -p dist
           find "${PKGDIR}" -type f -name "*.gpkg.tar" -exec cp -v {} dist/ \;
-          test -n "$(find dist -name '*.gpkg.tar' -print -quit)"
+          test -n "$(find dist -maxdepth 1 -name '*.gpkg.tar' -print -quit)"
 
-      - name: Upload artifact
+      - name: purge-release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 - "${{ inputs.tag }}" <<'PYEOF'
+          import sys, json, os
+          from urllib.request import Request, urlopen
+          from urllib.error import HTTPError
+
+          tag   = sys.argv[1]
+          token = os.environ["GH_TOKEN"]
+          repo  = os.environ["GITHUB_REPOSITORY"]
+          base  = f"https://api.github.com/repos/{repo}"
+          hdrs  = {
+              "Authorization":        f"Bearer {token}",
+              "Accept":               "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2022-11-28",
+          }
+
+          def api(method, path):
+              try:
+                  req = Request(f"{base}{path}", headers=hdrs, method=method)
+                  urlopen(req)
+              except HTTPError as e:
+                  if e.code not in (404, 422):
+                      raise
+
+          def get(path):
+              try:
+                  req = Request(f"{base}{path}", headers=hdrs)
+                  return json.load(urlopen(req))
+              except HTTPError as e:
+                  if e.code == 404:
+                      return None
+                  raise
+
+          rel = get(f"/releases/tags/{tag}")
+          if rel:
+              api("DELETE", f"/releases/{rel['id']}")
+
+          api("DELETE", f"/git/refs/tags/{tag}")
+          PYEOF
+
+      - name: artifact
         uses: actions/upload-artifact@v4
         with:
           name: ayugram-desktop-${{ inputs.version }}-binpkg
@@ -141,14 +214,7 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
-      - name: Delete existing release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          wget -qO- https://github.com/cli/cli/releases/download/v2.47.0/gh_2.47.0_linux_amd64.tar.gz | tar -xz
-          ./gh_2.47.0_linux_amd64/bin/gh release delete "${{ inputs.tag }}" --cleanup-tag --yes || true
-
-      - name: Create release
+      - name: release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.tag }}
