@@ -9,7 +9,7 @@ Unofficial Portage overlay for [AyuGram Desktop](https://github.com/AyuGram/AyuG
 ## Setup
 
 ```bash
-sudo eselect repository add ayugram https://github.com/Gur0v/ayugram-gentoo.git
+sudo eselect repository add ayugram https://github.com/Gur0v/ayugram-overlay.git
 sudo emaint sync --repo ayugram
 ```
 
