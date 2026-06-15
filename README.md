@@ -9,8 +9,8 @@ Unofficial Portage overlay for [AyuGram Desktop](https://github.com/AyuGram/AyuG
 ## Setup
 
 ```bash
-sudo eselect repository add ayugram git https://github.com/Gur0v/ayugram-overlay.git
-sudo emaint sync --repo ayugram
+sudo eselect repository add ayugram-overlay git https://github.com/Gur0v/ayugram-overlay.git
+sudo emaint sync --repo ayugram-overlay
 ```
 
 ## Installation
@@ -38,7 +38,7 @@ sudo emerge -av net-im/ayugram-desktop
 
 ```bash
 echo "net-im/ayugram-desktop **" | sudo tee -a /etc/portage/package.accept_keywords/00ayugram
-sudo emerge -av net-im/ayugram-desktop::ayugram
+sudo emerge -av net-im/ayugram-desktop::ayugram-overlay
 ```
 
 ## tg_owt
@@ -54,7 +54,7 @@ sudo emerge -av1 ">=media-libs/tg_owt-0_pre20260309"
 If the build fails, fall back to the overlay version:
 
 ```bash
-sudo emerge -av1 media-libs/tg_owt::ayugram
+sudo emerge -av1 media-libs/tg_owt::ayugram-overlay
 ```
 
 ## Packages

@@ -86,8 +86,8 @@ jobs:
       - name: overlay
         run: |
           mkdir -p /etc/portage/repos.conf
-          cat > /etc/portage/repos.conf/ayugram.conf <<EOF
-          [ayugram]
+          cat > /etc/portage/repos.conf/ayugram-overlay.conf <<EOF
+          [ayugram-overlay]
           location = ${GITHUB_WORKSPACE}
           masters = gentoo
           auto-sync = no
@@ -151,7 +151,7 @@ jobs:
           EOF
 
       - name: build
-        run: emerge -1v "=net-im/ayugram-desktop-${{ inputs.version }}::ayugram"
+        run: emerge -1v "=net-im/ayugram-desktop-${{ inputs.version }}::ayugram-overlay"
 
       - name: ccache-stats
         if: always()
