@@ -7,13 +7,9 @@ on:
         description: "package version (e.g. 6.7.8)"
         required: true
         default: "6.7.8"
-      tag:
-        description: "release tag (e.g. v6.7.8)"
-        required: true
-        default: "v6.7.8"
 
 concurrency:
-  group: release-${{ github.event.inputs.tag }}
+  group: release-${{ github.event.inputs.version }}
   cancel-in-progress: false
 
 permissions:
@@ -21,7 +17,7 @@ permissions:
 
 jobs:
   build:
-    name: net-im/ayugram-desktop-${{ inputs.version }}
+    name: net-im/ayugram-desktop-bin-${{ inputs.version }}
     runs-on: ubuntu-latest
     timeout-minutes: 180
     container:
@@ -35,6 +31,37 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: next-revision
+        id: rev
+        run: |
+          EBUILD_DIR="${GITHUB_WORKSPACE}/net-im/ayugram-desktop-bin"
+          
+          # Find highest existing revision for this version
+          LAST=$(ls "${EBUILD_DIR}/ayugram-desktop-bin-${{ inputs.version }}"*.ebuild 2>/dev/null \
+            | sort -V | tail -1)
+          
+          if [[ -z "$LAST" ]]; then
+            echo "Error: no base ebuild found for ${{ inputs.version }}"
+            exit 1
+          fi
+          
+          if [[ "$LAST" =~ -r([0-9]+)\.ebuild$ ]]; then
+            NEXT_R=$(( ${BASH_REMATCH[1]} + 1 ))
+          else
+            NEXT_R=1
+          fi
+          
+          PVR="${{ inputs.version }}-r${NEXT_R}"
+          TAG="v${PVR}"
+          NEW_EBUILD="${EBUILD_DIR}/ayugram-desktop-bin-${PVR}.ebuild"
+          
+          cp "$LAST" "$NEW_EBUILD"
+          
+          printf 'pvr=%s\ntag=%s\nnew_ebuild=%s\n' \
+            "$PVR" "$TAG" "$NEW_EBUILD" >> "$GITHUB_OUTPUT"
 
       - name: mkdirs
         run: |
@@ -96,8 +123,6 @@ jobs:
 
       - name: configure
         run: |
-          # Unquoted heredoc: $(nproc) evaluates now; \${VAR} stays
-          # literal for Portage to resolve when sourcing make.conf.
           cat >> /etc/portage/make.conf <<EOF
           COMMON_FLAGS="-march=x86-64-v2 -O2 -pipe"
           CFLAGS="\${COMMON_FLAGS}"
@@ -116,20 +141,15 @@ jobs:
             /etc/portage/package.env \
             /etc/portage/package.use
 
-          # Portage drops privileges to the portage user for builds;
-          # the ccache directory must be group-writable by portage.
           chown -R root:portage "${CCACHE_DIR}"
           chmod 2775 "${CCACHE_DIR}"
 
-          # pch_defines + time_macros allow ccache to cache precompiled
-          # headers, which ayugram-desktop uses extensively.
           cat > "${CCACHE_DIR}/ccache.conf" <<EOF
           max_size = 50G
           compression = true
           sloppiness = pch_defines,time_macros
           EOF
 
-          # tg_owt and ayugram-desktop fail to link with LTO enabled.
           cat > /etc/portage/env/nolto.conf <<EOF
           COMMON_FLAGS="\${COMMON_FLAGS} -fno-lto"
           EOF
@@ -160,29 +180,43 @@ jobs:
       - name: collect
         run: |
           mkdir -p dist
-          
-          AYUGRAM_PKG=$(find "${PKGDIR}" -type f -name "ayugram-desktop-${{ inputs.version }}*.gpkg.tar" | sort -V | tail -n 1)
-          
+
+          AYUGRAM_PKG=$(find "${PKGDIR}" -type f \
+            -name "ayugram-desktop-${{ inputs.version }}*.gpkg.tar" \
+            | sort -V | tail -n 1)
+
           if [[ -z "$AYUGRAM_PKG" ]]; then
             echo "Error: ayugram-desktop binary package not found!"
             exit 1
           fi
-          
+
           OUT_FILE="ayugram-desktop-${{ inputs.version }}.gpkg.tar"
-          
+
           cp -v "$AYUGRAM_PKG" "dist/${OUT_FILE}"
-          
+
           cd dist
           sha256sum "${OUT_FILE}" > "${OUT_FILE}.sha256"
-          
+
           test -f "${OUT_FILE}"
           test -f "${OUT_FILE}.sha256"
+
+      - name: manifest
+        run: |
+          ebuild "${{ steps.rev.outputs.new_ebuild }}" manifest
+
+      - name: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add net-im/ayugram-desktop-bin/
+          git commit -m "net-im/ayugram-desktop-bin: rebuild ${{ steps.rev.outputs.pvr }}"
+          git push
 
       - name: purge-release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          python3 - "${{ inputs.tag }}" <<'PYEOF'
+          python3 - "${{ steps.rev.outputs.tag }}" <<'PYEOF'
           import sys, json, os
           from urllib.request import Request, urlopen
           from urllib.error import HTTPError
@@ -224,7 +258,7 @@ jobs:
       - name: artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ayugram-desktop-${{ inputs.version }}-binpkg
+          name: ayugram-desktop-${{ steps.rev.outputs.pvr }}-binpkg
           path: |
             dist/*.gpkg.tar
             dist/*.sha256
@@ -234,7 +268,7 @@ jobs:
       - name: release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.tag }}
+          tag_name: ${{ steps.rev.outputs.tag }}
           files: |
             dist/*.gpkg.tar
             dist/*.sha256
