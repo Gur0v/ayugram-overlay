@@ -171,7 +171,7 @@ jobs:
           EOF
 
       - name: build
-        run: emerge -1v "=net-im/ayugram-desktop-${{ inputs.version }}::ayugram-overlay"
+        run: emerge -1v dev-vcs/git "=net-im/ayugram-desktop-${{ inputs.version }}::ayugram-overlay"
 
       - name: ccache-stats
         if: always()
