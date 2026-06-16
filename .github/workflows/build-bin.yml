@@ -29,40 +29,6 @@ jobs:
       CCACHE_DIR: /var/cache/ccache
 
     steps:
-      - name: checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: next-revision
-        id: rev
-        run: |
-          EBUILD_DIR="${GITHUB_WORKSPACE}/net-im/ayugram-desktop-bin"
-          
-          # Find highest existing revision for this version
-          LAST=$(ls "${EBUILD_DIR}/ayugram-desktop-bin-${{ inputs.version }}"*.ebuild 2>/dev/null \
-            | sort -V | tail -1)
-          
-          if [[ -z "$LAST" ]]; then
-            echo "Error: no base ebuild found for ${{ inputs.version }}"
-            exit 1
-          fi
-          
-          if [[ "$LAST" =~ -r([0-9]+)\.ebuild$ ]]; then
-            NEXT_R=$(( ${BASH_REMATCH[1]} + 1 ))
-          else
-            NEXT_R=1
-          fi
-          
-          PVR="${{ inputs.version }}-r${NEXT_R}"
-          TAG="v${PVR}"
-          NEW_EBUILD="${EBUILD_DIR}/ayugram-desktop-bin-${PVR}.ebuild"
-          
-          cp "$LAST" "$NEW_EBUILD"
-          
-          printf 'pvr=%s\ntag=%s\nnew_ebuild=%s\n' \
-            "$PVR" "$TAG" "$NEW_EBUILD" >> "$GITHUB_OUTPUT"
-
       - name: mkdirs
         run: |
           mkdir -p \
@@ -80,6 +46,47 @@ jobs:
           path: /var/db/repos/gentoo
           key: portage-${{ runner.os }}-${{ steps.cache-key.outputs.week }}
           restore-keys: portage-${{ runner.os }}-
+
+      - name: sync
+        run: |
+          [[ -f /var/db/repos/gentoo/profiles/base/eapi ]] || emerge-webrsync -q
+          getuto
+
+      - name: install-git
+        run: emerge --getbinpkg -q dev-vcs/git
+
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: next-revision
+        id: rev
+        run: |
+          EBUILD_DIR="${GITHUB_WORKSPACE}/net-im/ayugram-desktop-bin"
+
+          LAST=$(ls "${EBUILD_DIR}/ayugram-desktop-bin-${{ inputs.version }}"*.ebuild 2>/dev/null \
+            | sort -V | tail -1)
+
+          if [[ -z "$LAST" ]]; then
+            echo "Error: no base ebuild found for ${{ inputs.version }}"
+            exit 1
+          fi
+
+          if [[ "$LAST" =~ -r([0-9]+)\.ebuild$ ]]; then
+            NEXT_R=$(( ${BASH_REMATCH[1]} + 1 ))
+          else
+            NEXT_R=1
+          fi
+
+          PVR="${{ inputs.version }}-r${NEXT_R}"
+          TAG="v${PVR}"
+          NEW_EBUILD="${EBUILD_DIR}/ayugram-desktop-bin-${PVR}.ebuild"
+
+          cp "$LAST" "$NEW_EBUILD"
+
+          printf 'pvr=%s\ntag=%s\nnew_ebuild=%s\n' \
+            "$PVR" "$TAG" "$NEW_EBUILD" >> "$GITHUB_OUTPUT"
 
       - name: cache-binpkgs
         uses: actions/cache@v4
@@ -101,11 +108,6 @@ jobs:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ runner.os }}-${{ github.sha }}
           restore-keys: ccache-${{ runner.os }}-
-
-      - name: sync
-        run: |
-          emerge-webrsync -q
-          getuto
 
       - name: ccache-install
         run: emerge -1qv dev-util/ccache
@@ -202,10 +204,12 @@ jobs:
 
       - name: manifest
         run: |
+          cp "dist/ayugram-desktop-${{ inputs.version }}.gpkg.tar" /var/cache/distfiles/
           ebuild "${{ steps.rev.outputs.new_ebuild }}" manifest
 
       - name: commit
         run: |
+          cd "${GITHUB_WORKSPACE}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add net-im/ayugram-desktop-bin/
