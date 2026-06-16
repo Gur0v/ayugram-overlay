@@ -8,6 +8,10 @@ on:
         required: true
         default: "6.7.8"
 
+defaults:
+  run:
+    shell: bash
+
 concurrency:
   group: release-${{ github.event.inputs.version }}
   cancel-in-progress: false
@@ -20,6 +24,7 @@ jobs:
     name: net-im/ayugram-desktop-bin-${{ inputs.version }}
     runs-on: ubuntu-latest
     timeout-minutes: 180
+
     container:
       image: gentoo/stage3:amd64-desktop-openrc
       options: --privileged
@@ -38,22 +43,25 @@ jobs:
 
       - name: cache-key
         id: cache-key
-        run: printf 'week=%s\n' "$(date +%G-%V)" >> "$GITHUB_OUTPUT"
+        run: |
+          printf 'week=%s\n' "$(date +%G-%V)" >> "$GITHUB_OUTPUT"
 
       - name: cache-portage
         uses: actions/cache@v4
         with:
           path: /var/db/repos/gentoo
           key: portage-${{ runner.os }}-${{ steps.cache-key.outputs.week }}
-          restore-keys: portage-${{ runner.os }}-
+          restore-keys: |
+            portage-${{ runner.os }}-
 
       - name: sync
         run: |
           [[ -f /var/db/repos/gentoo/profiles/base/eapi ]] || emerge-webrsync -q
-          getuto
+          emerge --sync
 
       - name: install-git
-        run: emerge --getbinpkg -q dev-vcs/git
+        run: |
+          emerge --getbinpkg -q dev-vcs/git
 
       - name: checkout
         uses: actions/checkout@v4
@@ -93,28 +101,33 @@ jobs:
         with:
           path: ${{ env.PKGDIR }}
           key: binpkgs-${{ runner.os }}-${{ hashFiles('media-libs/**', 'net-im/**', 'dev-cpp/**') }}
-          restore-keys: binpkgs-${{ runner.os }}-
+          restore-keys: |
+            binpkgs-${{ runner.os }}-
 
       - name: cache-distfiles
         uses: actions/cache@v4
         with:
           path: /var/cache/distfiles/git3-src
           key: distfiles-git-${{ runner.os }}-${{ hashFiles('net-im/**', 'media-libs/**') }}
-          restore-keys: distfiles-git-${{ runner.os }}-
+          restore-keys: |
+            distfiles-git-${{ runner.os }}-
 
       - name: cache-ccache
         uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ runner.os }}-${{ github.sha }}
-          restore-keys: ccache-${{ runner.os }}-
+          key: ccache-${{ runner.os }}-${{ hashFiles('net-im/**', 'media-libs/**', 'dev-cpp/**') }}
+          restore-keys: |
+            ccache-${{ runner.os }}-
 
       - name: ccache-install
-        run: emerge -1qv dev-util/ccache
+        run: |
+          emerge -1qv dev-util/ccache
 
       - name: overlay
         run: |
           mkdir -p /etc/portage/repos.conf
+
           cat > /etc/portage/repos.conf/ayugram-overlay.conf <<EOF
           [ayugram-overlay]
           location = ${GITHUB_WORKSPACE}
@@ -173,11 +186,15 @@ jobs:
           EOF
 
       - name: build
-        run: emerge -1v dev-vcs/git "=net-im/ayugram-desktop-${{ inputs.version }}::ayugram-overlay"
+        run: |
+          emerge -1v \
+            dev-vcs/git \
+            "=net-im/ayugram-desktop-${{ inputs.version }}::ayugram-overlay"
 
       - name: ccache-stats
         if: always()
-        run: ccache -s
+        run: |
+          ccache -s
 
       - name: collect
         run: |
@@ -197,6 +214,7 @@ jobs:
           cp -v "$AYUGRAM_PKG" "dist/${OUT_FILE}"
 
           cd dist
+
           sha256sum "${OUT_FILE}" > "${OUT_FILE}.sha256"
 
           test -f "${OUT_FILE}"
@@ -210,10 +228,14 @@ jobs:
       - name: commit
         run: |
           cd "${GITHUB_WORKSPACE}"
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
           git add net-im/ayugram-desktop-bin/
+
           git commit -m "net-im/ayugram-desktop-bin: rebuild ${{ steps.rev.outputs.pvr }}"
+
           git push
 
       - name: purge-release
@@ -221,23 +243,31 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python3 - "${{ steps.rev.outputs.tag }}" <<'PYEOF'
-          import sys, json, os
-          from urllib.request import Request, urlopen
+          import json
+          import os
+          import sys
           from urllib.error import HTTPError
+          from urllib.request import Request, urlopen
 
-          tag   = sys.argv[1]
+          tag = sys.argv[1]
           token = os.environ["GH_TOKEN"]
-          repo  = os.environ["GITHUB_REPOSITORY"]
-          base  = f"https://api.github.com/repos/{repo}"
-          hdrs  = {
-              "Authorization":        f"Bearer {token}",
-              "Accept":               "application/vnd.github+json",
+          repo = os.environ["GITHUB_REPOSITORY"]
+
+          base = f"https://api.github.com/repos/{repo}"
+
+          headers = {
+              "Authorization": f"Bearer {token}",
+              "Accept": "application/vnd.github+json",
               "X-GitHub-Api-Version": "2022-11-28",
           }
 
           def api(method, path):
               try:
-                  req = Request(f"{base}{path}", headers=hdrs, method=method)
+                  req = Request(
+                      f"{base}{path}",
+                      headers=headers,
+                      method=method,
+                  )
                   urlopen(req)
               except HTTPError as e:
                   if e.code not in (404, 422):
@@ -245,7 +275,10 @@ jobs:
 
           def get(path):
               try:
-                  req = Request(f"{base}{path}", headers=hdrs)
+                  req = Request(
+                      f"{base}{path}",
+                      headers=headers,
+                  )
                   return json.load(urlopen(req))
               except HTTPError as e:
                   if e.code == 404:
@@ -253,6 +286,7 @@ jobs:
                   raise
 
           rel = get(f"/releases/tags/{tag}")
+
           if rel:
               api("DELETE", f"/releases/{rel['id']}")
 
