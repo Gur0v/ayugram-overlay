@@ -39,15 +39,6 @@ echo "=net-im/ayugram-desktop-9999 **" | sudo tee -a /etc/portage/package.accept
 sudo emerge -av =net-im/ayugram-desktop-9999
 ```
 
-## Required USE flags
-AyuGram needs specific flags enabled on dependencies to function correctly:
-
-```bash
-# /etc/portage/package.use/ayugram
-media-video/ffmpeg opus vpx
-sys-libs/minizip-ng compat
-```
-
 ## Implementation Notes
 
 * **LTO and Compilers:** GCC is the recommended compiler. **LTO is highly discouraged** for both `net-im/ayugram-desktop` and `media-libs/tg_owt`. These codebases are massive; enabling LTO typically leads to memory exhaustion (OOM) during linking, compiler crashes, or unpredictable runtime logic errors due to ODR violations.
