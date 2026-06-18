@@ -56,18 +56,41 @@ jobs:
 
       - name: sync
         run: |
-          [[ -f /var/db/repos/gentoo/profiles/base/eapi ]] || emerge-webrsync -q
-          emerge --sync
+          if [[ ! -f /var/db/repos/gentoo/profiles/base/eapi ]]; then
+            emerge-webrsync -q
+          fi
+          
+          emerge --getbinpkg -q dev-vcs/git
+          
+          mkdir -p /etc/portage/repos.conf
+          cat > /etc/portage/repos.conf/gentoo.conf <<EOF
+          [DEFAULT]
+          main-repo = gentoo
+
+          [gentoo]
+          location = /var/db/repos/gentoo
+          sync-type = git
+          sync-uri = https://github.com/gentoo-mirror/gentoo.git
+          auto-sync = yes
+          sync-depth = 1
+          EOF
+          
+          git config --global --add safe.directory /var/db/repos/gentoo
+
+          if [[ ! -d /var/db/repos/gentoo/.git ]]; then
+            echo "Converting cached tree to Git..."
+            rm -rf /var/db/repos/gentoo/* /var/db/repos/gentoo/.[!.]*
+            git clone --depth 1 https://github.com/gentoo-mirror/gentoo.git /var/db/repos/gentoo
+          else
+            echo "Syncing via Git..."
+            emerge --sync
+          fi
 
       - name: update-world
         run: |
           emerge --update --newuse --deep --getbinpkg \
             --exclude 'dev-cpp/abseil-cpp dev-libs/protobuf' \
             @world
-
-      - name: install-git
-        run: |
-          emerge --getbinpkg -q dev-vcs/git
 
       - name: checkout
         uses: actions/checkout@v4
@@ -198,9 +221,13 @@ jobs:
             "=net-im/ayugram-desktop-${{ inputs.version }}::ayugram-overlay"
 
       - name: ccache-stats
-        if: always()
+        if: success() || failure()
         run: |
-          ccache -s
+          if command -v ccache &> /dev/null; then
+            ccache -s
+          else
+            echo "ccache not installed, skipping."
+          fi
 
       - name: collect
         run: |
