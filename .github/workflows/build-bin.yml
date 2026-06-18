@@ -59,6 +59,12 @@ jobs:
           [[ -f /var/db/repos/gentoo/profiles/base/eapi ]] || emerge-webrsync -q
           emerge --sync
 
+      - name: update-world
+        run: |
+          emerge --update --newuse --deep --getbinpkg \
+            --exclude 'dev-cpp/abseil-cpp dev-libs/protobuf' \
+            @world
+
       - name: install-git
         run: |
           emerge --getbinpkg -q dev-vcs/git
