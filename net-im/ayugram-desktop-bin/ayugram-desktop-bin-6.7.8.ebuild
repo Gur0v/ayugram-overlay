@@ -1,5 +1,6 @@
 # Copyright 2026 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
+
 EAPI=8
 
 inherit xdg
@@ -7,14 +8,13 @@ inherit xdg
 DESCRIPTION="Desktop Telegram client with good customization and Ghost mode (binary package)"
 HOMEPAGE="https://github.com/AyuGram/AyuGramDesktop"
 
-MY_PV="${PV}"
 SRC_URI="https://github.com/Gur0v/ayugram-overlay/releases/download/v${PVR}/ayugram-desktop-${PV}.gpkg.tar -> ${PF}.gpkg.tar"
 
 S="${WORKDIR}"
 LICENSE="BSD GPL-3-with-openssl-exception LGPL-2+"
 SLOT="0"
 KEYWORDS="-* ~amd64"
-RESTRICT="mirror strip"
+RESTRICT="mirror strip test"
 QA_PREBUILT="usr/bin/AyuGram"
 
 RDEPEND="
@@ -55,9 +55,9 @@ src_unpack() {
 		|| die "Failed to unpack binary image from gpkg"
 }
 
-src_prepare() { default; }
 src_configure() { :; }
-src_compile()   { :; }
+
+src_compile() { :; }
 
 src_install() {
 	local d
@@ -75,6 +75,3 @@ src_install() {
 		done
 	fi
 }
-
-pkg_postinst() { xdg_pkg_postinst; }
-pkg_postrm()   { xdg_pkg_postrm;  }
