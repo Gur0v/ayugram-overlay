@@ -10,13 +10,11 @@ inherit xdg cmake python-any-r1 flag-o-matic optfeature git-r3
 DESCRIPTION="Desktop Telegram client with good customization and Ghost mode"
 HOMEPAGE="https://github.com/AyuGram/AyuGramDesktop"
 
-# TODO: https://github.com/AyuGram/AyuGramDesktop/archive/refs/tags/v${PV}.tar.gz -> ${P}.tar.gz
 EGIT_REPO_URI="https://github.com/AyuGram/AyuGramDesktop.git"
 EGIT_COMMIT="v${PV}"
 
 LICENSE="BSD GPL-3-with-openssl-exception LGPL-2+"
 SLOT="0"
-KEYWORDS=""
 
 IUSE="dbus enchant +fonts +libdispatch screencast wayland webkit +X"
 
