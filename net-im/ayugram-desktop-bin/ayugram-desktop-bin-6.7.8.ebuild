@@ -8,7 +8,7 @@ DESCRIPTION="Desktop Telegram client with good customization and Ghost mode (bin
 HOMEPAGE="https://github.com/AyuGram/AyuGramDesktop"
 
 MY_PV="${PV}"
-SRC_URI="https://github.com/Gur0v/ayugram-overlay/releases/download/v${MY_PV}/ayugram-desktop-${MY_PV}.gpkg.tar"
+SRC_URI="https://github.com/Gur0v/ayugram-overlay/releases/download/v${PVR}/ayugram-desktop-${PV}.gpkg.tar -> ${PF}.gpkg.tar"
 
 S="${WORKDIR}"
 LICENSE="BSD GPL-3-with-openssl-exception LGPL-2+"
@@ -51,7 +51,7 @@ RDEPEND="
 
 src_unpack() {
 	tar -xOf "${DISTDIR}/${A}" --wildcards '*/image.tar.zst' \
-		| tar --zstd -x -C "${WORKDIR}" \
+		| tar --zstd -xf - -C "${WORKDIR}" \
 		|| die "Failed to unpack binary image from gpkg"
 }
 
