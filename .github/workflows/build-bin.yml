@@ -113,10 +113,10 @@ jobs:
       - name: cache-distfiles
         uses: actions/cache@v4
         with:
-          path: /var/cache/distfiles/git3-src
-          key: distfiles-git-${{ runner.os }}-${{ hashFiles('net-im/**', 'media-libs/**') }}
+          path: /var/cache/distfiles
+          key: distfiles-${{ runner.os }}-${{ hashFiles('net-im/**', 'media-libs/**') }}
           restore-keys: |
-            distfiles-git-${{ runner.os }}-
+            distfiles-${{ runner.os }}-
 
       - name: cache-ccache
         uses: actions/cache@v4
