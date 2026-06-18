@@ -68,9 +68,9 @@ src_install() {
 
 	local upstream_doc="${ED}/usr/share/doc/ayugram-desktop-${PV}"
 	if [[ -d "${upstream_doc}" ]]; then
-		mv "${upstream_doc}" "${ED}/usr/share/doc/${P}" || die
+		mv "${upstream_doc}" "${ED}/usr/share/doc/${PF}" || die
 		local f
-		for f in "${ED}/usr/share/doc/${P}"/*.bz2; do
+		for f in "${ED}/usr/share/doc/${PF}"/*.bz2; do
 			[[ -f "${f}" ]] && bzip2 -d "${f}" || die
 		done
 	fi
