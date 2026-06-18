@@ -228,7 +228,7 @@ jobs:
 
       - name: manifest
         run: |
-          cp "dist/ayugram-desktop-${{ inputs.version }}.gpkg.tar" /var/cache/distfiles/
+          cp "dist/ayugram-desktop-${{ inputs.version }}.gpkg.tar" "/var/cache/distfiles/ayugram-desktop-bin-${{ steps.rev.outputs.pvr }}.gpkg.tar"
           ebuild "${{ steps.rev.outputs.new_ebuild }}" manifest
 
       - name: commit
