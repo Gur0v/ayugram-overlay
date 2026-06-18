@@ -1,4 +1,5 @@
 # ayugram-overlay
+
 ![AyuGram](https://github.com/AyuGram/AyuGramDesktop/raw/dev/.github/AyuGram.png)
 ![AyuChan](https://github.com/AyuGram/AyuGramDesktop/raw/dev/.github/AyuChan.png)
 <img src="https://wiki.gentoo.org/images/d/dd/Genchu.png" width="145"/>
@@ -13,39 +14,47 @@ sudo emaint sync --repo ayugram-overlay
 
 ## Installation
 
-### Source (recommended)
-Full USE flag support, optimized for your machine, compiled with your flags.
+### Source (Recommended)
+Standard build from source. Linked against your local libraries.
 ```bash
-echo "net-im/ayugram-desktop ~amd64" | sudo tee -a /etc/portage/package.accept_keywords/00ayugram
+echo "net-im/ayugram-desktop ~amd64" | sudo tee -a /etc/portage/package.accept_keywords/ayugram
 sudo emerge -av net-im/ayugram-desktop
 ```
 
 ### Binary
-For when you don't feel like waiting. Requires an x86_64-v2 CPU (Intel/AMD 2008+).
+Built via CI. Requires an **x86-64-v2** capable CPU (Intel Nehalem / AMD Jaguar and newer).
 
-> [!WARNING]
-> Binaries are **not statically linked**. If AyuGram fails to launch with a library error, your system libraries have drifted out of sync with the build environment. Recompile from source.
+> [!CAUTION]
+> These binaries are linked against system libraries. Because AyuGram uses **Qt Private APIs**, any minor update to `dev-qt/qtbase` on your system (e.g. 6.10 -> 6.11) will cause an ABI mismatch and a crash. If this happens, wait for a CI rebuild or switch to the source ebuild.
 
 ```bash
-echo "net-im/ayugram-desktop-bin ~amd64" | sudo tee -a /etc/portage/package.accept_keywords/00ayugram
+echo "net-im/ayugram-desktop-bin ~amd64" | sudo tee -a /etc/portage/package.accept_keywords/ayugram
 sudo emerge -av net-im/ayugram-desktop-bin
 ```
 
 ### Live
-> [!NOTE]
-> Installs directly from the development branch. Intended for developers or early adopters.
-
+Installs directly from the development branch.
 ```bash
-echo "net-im/ayugram-desktop **" | sudo tee -a /etc/portage/package.accept_keywords/00ayugram
-sudo emerge -av net-im/ayugram-desktop::ayugram-overlay
+echo "=net-im/ayugram-desktop-9999 **" | sudo tee -a /etc/portage/package.accept_keywords/ayugram
+sudo emerge -av =net-im/ayugram-desktop-9999
 ```
 
-## Packages
-* `net-im/ayugram-desktop` - Source build (full USE flag support)
-* `net-im/ayugram-desktop-bin` - Pre-built x86_64-v2 binary (2008+ CPU required)
+## Required USE flags
+AyuGram needs specific flags enabled on dependencies to function correctly:
 
-## Notes
-* GCC recommended. Clang/ThinLTO builds may fail in some configurations.
+```bash
+# /etc/portage/package.use/ayugram
+media-video/ffmpeg opus vpx
+sys-libs/minizip-ng compat
+```
+
+## Implementation Notes
+
+* **LTO and Compilers:** GCC is the recommended compiler. **LTO is highly discouraged** for both `net-im/ayugram-desktop` and `media-libs/tg_owt`. These codebases are massive; enabling LTO typically leads to memory exhaustion (OOM) during linking, compiler crashes, or unpredictable runtime logic errors due to ODR violations.
+* **ABI Stability:** AyuGram relies on **Qt Private APIs** for custom text rendering. These internal interfaces change memory offsets between minor Qt releases (e.g., 6.10.x to 6.11.x). 
+    * Running a binary built against a different Qt minor version causes **immediate heap corruption** (`free(): invalid pointer`) and a crash. 
+    * If you update Qt, you must re-emerge the package to pull a build synced with the new ABI.
 
 ## Credits
-* [OverLessArtem](https://codeberg.org/OverLessArtem) - original ebuilds for 6.3.10
+* [AyuGram Team](https://github.com/AyuGram)
+* [OverLessArtem](https://codeberg.org/OverLessArtem) — original 6.3.10 ebuilds.
