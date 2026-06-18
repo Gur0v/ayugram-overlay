@@ -147,7 +147,7 @@ jobs:
           PKGDIR="${PKGDIR}"
           CCACHE_DIR="${CCACHE_DIR}"
           FEATURES="buildpkg buildpkg-live getbinpkg ccache -binpkg-request-signature -ipc-sandbox -network-sandbox -pid-sandbox"
-          EMERGE_DEFAULT_OPTS="--jobs=$(nproc) --with-bdeps=y --complete-graph=y"
+          EMERGE_DEFAULT_OPTS="--jobs=$(nproc) --with-bdeps=y --complete-graph=y --usepkg-exclude='dev-cpp/abseil-cpp dev-libs/protobuf'"
           EOF
 
           mkdir -p \
