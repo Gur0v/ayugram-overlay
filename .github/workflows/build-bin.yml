@@ -83,6 +83,7 @@ jobs:
             git clone --depth 1 https://github.com/gentoo-mirror/gentoo.git /var/db/repos/gentoo
           else
             echo "Syncing via Git..."
+            git config --global --add safe.directory /var/db/repos/gentoo
             emerge --sync
           fi
 
